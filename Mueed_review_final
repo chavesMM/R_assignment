@@ -1,0 +1,101 @@
+# Overall, this is a well-structured code. The extensive use of comments to explain what is done in each step makes it easy to understand the code
+# Moreover, the use of checks to ensure the code ran successfully is very useful while debugging. e.g.
+"# Check if the 'Position' column is in ascending order
+is_ordered <- all(diff(num_inc_zmm) >= 0)
+
+# Print the result
+print(is_ordered)"
+
+# as a general point of improvement, hardcoded file locations could be avoided to make it easier for collaborators to use the same code. 
+# For example, instead of using read.table(file = PATH), one could use the read.table(file.choose()) command, which would prompt the user to select the file they want to use for this step from a pop up window.
+
+# in addition, it would be very helpful if the Rmd file was knitted into an htmal or pdf file which would make it easier to read the code and have a quick look at the output
+# before having to run the command locally 
+
+# another point of improvement could be in the following code:
+"# Extract columns from the Group genotype 3 to 986
+zmp_columns <- zmp_group[, 3:986, drop = FALSE]"
+# While this code is perfectly fine, since the code is meant to read from the 3rd column until the last one in the dataframe, it might be easier to write:
+"zmp_columns <- zmp_group[, 3:ncol(zmp_group), drop = FALSE]"
+# this way, you do not need to expressly state the exact end column every time
+
+# While it can be helpful to write out intermediary files to disk, using a command like:
+"# Write the extracted data to a new file
+write.table(zmp_columns, file = "zmp.txt", row.names = FALSE)"
+
+# Since the assignment instructions did not ask for such a file, it might be an unnecessary step. For the purpose of completing the assignment, storing the zmp_columns in the 
+# Rstudio environment may be enough. Moreover, doing so would mean that for subsequent steps you would not need to read in a table file each time. You could just call the dataframe
+# stored in the Rstudio environment. e.g.
+# instead of using :
+"zmm_to_trans <- read.table("C:/Users/mchavesm/Box/Rass/R_assignment/zmm.txt", header = TRUE)"
+# and then the transposition:
+"t_zmm <- t(zmm_to_trans)"
+# you could just use:
+"t_zmm <- t(zmm_columns)"
+# This would reduce two steps in your code (saving the dataframe to file and then calling it up to create a new dataframe, with duplicate information as the zmn_columns)
+# in case this was done to remove the row names from the zmp_columns file, an alternative is to use the following command:
+"rownames(zmp_columns)<-NULL"
+# this would remove the row names and this output could be saved in the Rstudio environment as a new dataframe
+
+# also, instead of using cbind() to join files, considering using the join() command where you can specify a column that the two dataframes should have in common, like SNP_ID
+# in this case
+
+# When you are classifying missing data in the dataframes, you used the command:
+"#Maize missing data
+missing_zmm <- data.frame(rowSums(ready_zmm == "?/?", na.rm = FALSE))"
+# I do not know if there are any samples that have en entry like G/? or ?/A, but if there are any, your code would not count them as missing data. In fact, they would not 
+# be counted at all in your analysis as you explicitly stated what homozygous and heterozygous are and classified missing as ?/? only
+# instead, you could add all possible combinations of ?/x in this command just like you did for the heterozygous ones
+# or you could you a if-else loop to do the classification as such:
+"# Classification function
+classify_genotype <- function(genotype) {
+  if(grepl("^(A/C|A/G|A/T|C/A|C/G|C/T|G/A|G/C|G/T|T/A|T/C|T/G)$", genotype)) {
+    return("Heterozygous")
+  } else if(grepl("^(A/A|C/C|G/G|T/T)$", genotype)) {
+    return("Homozygous")
+  } else {
+    return("Missing")
+  }
+}
+
+# Initialize counts and apply classification
+genotypes$Homozygous <- 0
+genotypes$Heterozygous <- 0
+genotypes$Missing <- 0
+
+# apply classification function across genotype columns and calculate counts
+for (i in 4:ncol(genotypes)) { 
+  classifications <- sapply(genotypes[, i], classify_genotype)
+  genotypes$Homozygous <- genotypes$Homozygous + (classifications == "Homozygous")
+  genotypes$Heterozygous <- genotypes$Heterozygous + (classifications == "Heterozygous")
+  genotypes$Missing <- genotypes$Missing + (classifications == "Missing")
+}"
+
+## observations after running the code in the Readme.Rmd file:
+"# Assessing inspection
+
+```{r}
+# Extract the specific column
+column_3 <- data[, 3]"
+
+# this code chunk does not run. This is because 'data' is not a defined object stored in the Rstudio environment
+# instead, the following code should be used:
+"column_3 <- fang[, 3]"
+# fang is a defined object in Rstudio and contains the species info in the third column which the you are trying to call from the 'data' object
+
+# visualization:
+
+# part 1:- chromsomes are discrete objects so the labels of the x-axis should be whole numbers for chromosome instead of decimals
+# it would be nice to add a title to the plot.
+# You could use:
+"# Teosinte
+ggplot() + geom_col(data = zmp_counts, mapping = aes(x = factor(Chromosome), y=n)) + 
+  labs(x = "Chromosome", y = "Number of SNPs", fill = "Chromosome", title = "No. of SNPs per chromosome")"
+# to make the x labs into discrete numbers, coerce the "chromosome" variable into a factor
+
+# the homozygous/heterozygous ratio plot is very hard to interpret. There are no values on the y-axis. The SNP_IDs as in exponentials and the whole graph looks like a big 
+# rectangle
+
+# also, consider making a stacked bar chart to represent the %homozygous, hetero, and missing. That way one graph will summarize all the info
+
+# for your visualization, the number of duplicated SNPs in Zmays seems to work fine. But the graph for teosinte does not produce a graph. The only output is the x and y labels
