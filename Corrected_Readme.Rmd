@@ -1,38 +1,46 @@
 ---
-title: "Readme"
+title: "Corrected Readme"
 author: "Manuela Chaves"
-date: "2024-03-05"
-output:
-  pdf_document: default
-  html_document: default
+date: "2024-03-21"
+output: html_document
 ---
-# Note for reviewers: 
-Please make sure to change the location pathway to your own pathway.
-The created_files folder contain all created files in this R project in case you need them.
 
-# Part 1. Data inspection
 
-During this R assignment, two raw genomic data files (“fang _et_al_genotypes.txt” and “snp_position.txt”) were subjected to a file inspection process through Rstudio, to describe and understand the kind of data we are dealing with.
+During this R assignment, two raw genomic data files (“fang _et_al_genotypes.txt” and “snp_position.txt”) were subjected to a file inspection process through Rstudio, to describe and understand the kind of data we are dealing with, as well as to pre-process the data for further analysis.
 
-## files:
+## Files:
 fang_et_al_genotypes.txt: a published SNP data set including maize, teosinte (i.e., wild maize), and Tripsacum (a close outgroup to the genus Zea) individuals.
 
 snp_position.txt: an additional data file that includes the SNP id (first column), chromosome location (third column), nucleotide location (fourth column) and other information for the SNPs genotyped in the fang_et_al_genotypes.txt file.
 
+## Note:
+1. This Readme file implemented corrections from reviewers.Go to "Readme.rmd" to see the first version of the project.
+2. The created_files folder contain all created files in this R project in case you need them.
+
+# Part 1. Data inspection
+
+
 ## Reading .txt files:
 
-* The following command chunk will load a program that allows to read ".txt" files and will upload them to the working space. 
-* The package "readr" needs to be installed the first time to read the text files in R.
-* Change the path directory to your corresponding directory
+* The following command chunk will run the initial files, which are contained in the same repository folder.
+
+```{r load libraries}
+# Load required libraries
+install.packages("ggplot2")
+install.packages("tidyverse")
+library(readr)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+```
 
 ```{r read txt}
-#install.packages("readr")
-library(readr)
-fang <- read.table("C:/Users/mchavesm/Box/Rass/R_assignment/fang_et_al_genotypes.txt", header = TRUE)
-snp <- read.table("C:/Users/mchavesm/Box/Rass/R_assignment/snp_position.txt", header = TRUE, sep = "\t")
-print(fang)
-print(snp)
+snp <- read_tsv("snp_position.txt", show_col_types = FALSE)
+fang <- read_tsv("fang_et_al_genotypes.txt", show_col_types = FALSE)
 ```
+
 
 ## Attributes of the Fang et al & SNP files
 
@@ -42,8 +50,8 @@ print(snp)
 #Inspecting the Fang file
 
 dim(fang) #dimensions of the file
-str(fang) #structure of the file
-summary(fang) # statistic summary 
+str(fang[, 1:5]) #structure of the file for the first 5 columns
+#summary(fang[, 1:5]) # statistic summary 
 names(fang) #shows names of all columns in file
 head(fang) #shows first lines of file
 tail(fang) #shows last lines of file
@@ -64,22 +72,10 @@ na_snp <- grepl("NA", snp, ignore.case = TRUE)
 1. Fang:
 * Number of rows = 2782 and columns = 986
 * Data structure shows character type (col_character). 
-* The summary command is not very useful for the Fang file since it recognizes the data as characters.
+* The summary command is not very useful for the Fang file since it recognizes the data as characters. That is why I commented out this line.
 * Tail and head will display part of the data nicely organized in a printed data frame (tibble)
 * We can check the names of all the columns in the file with "names()"
 * To check for missing values in the Fang file we could use $ colSums(is.na(fang)), which will return a logical matrix of the same dimensions of the file, and sums the TRUE values in each column, TRUE meaning NA. This command returns all 0, meaning all FALSE (not NA). However, we know from the previous UNIX assignment, that the missing data in Fang is delimited as "?/?", in which case we can use na_fang <- grepl("?/?", fang, ignore.case = TRUE), which will create a data frame with insensitive search, meaning any combination of the missing value. This time we get that there is at least 1 missing data in every column (all TRUE values).
-* From this genotype data, I am interested in knowing how many columns have our genotypes of interest (ZMM for maize and ZMP for Teosinte), then I am using the following command lines, we get 1573 rows with the group ZMM and 975 rows with the group ZMP.
-
-```{r inspection}
-# Extract the specific column
-column_3 <- data[, 3]
-# Count the number of rows that contain the prefix "ZMM" or "ZMP"
-count_ZMM <- sum(grepl("^ZMM", column_3))
-count_ZMP <- sum(grepl("^ZMP", column_3))
-# Print the result
-print(count_ZMM)
-print(count_ZMP)
-```
 
 
 2. SNP:
@@ -94,84 +90,47 @@ print(count_ZMP)
 # Part 2. Data processing
 
 ## Extracting data
-The following chunk is used to extract specifically the Maize (ZMM) and Teosinte (ZMP) groups along with the SNP_ID (in columns) of the Fang file. Finally, I saved the new data into a new file called zmm.txt/zmp.txt for further analysis. 
+
+* We need to get columns 1, 2, and 3 for SNP_ID, Chromosome and Position respectively. 
 
 ```{r data extraction}
-# Subset the data frame to include only rows where the specific column contains the "ZMM" group
-zmm_group <- fang[grep("^ZMM", fang$Group),]
-# Extract columns from the Group genotype selected from column 3 to 986
-zmm_columns <- zmm_group[, 3:986, drop = FALSE]
-# Write the extracted data to a new file
-write.table(zmm_columns, file = "zmm.txt", row.names = FALSE)
-
-# Do the same for the ZMP group
-# Subset the data frame to include only rows where the specific column contains the "ZMP" group
-zmp_group <- fang[grep("^ZMP", fang$Group),]
-# Extract columns from the Group genotype 3 to 986
-zmp_columns <- zmp_group[, 3:986, drop = FALSE]
-# Write the extracted data to a new file
-write.table(zmp_columns, file = "zmp.txt", row.names = FALSE)
-```
-
-## Transposing data
-* Next thing we need to do is to transpose the columns that contain the SNP_ID into rows.
-
-```{r transposing}
-# Transposing the Fang file: Maize
-# Read the data file
-zmm_to_trans <- read.table("C:/Users/mchavesm/Box/Rass/R_assignment/zmm.txt", header = TRUE)
-# Transposing the Fang file: Maize
-t_zmm <- t(zmm_to_trans)
-# Save the transposed data into a new file with no column headers
-write.table(t_zmm, file = "transposed_zmm.txt", sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
-# You can open the file with
-transposed_zmm <- read.table("transposed_zmm.txt", header = TRUE)
-
-# Transposing the Fang file: Teosinte
-zmp_to_trans <- read.table("C:/Users/mchavesm/Box/Rass/R_assignment/zmp.txt", header = TRUE)
-t_zmp <- t(zmp_to_trans)
-write.table(t_zmp, file = "transposed_zmp.txt", sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
-transposed_zmp <- read.table("transposed_zmp.txt", header = TRUE)
-
-```
-
-## Data extraction
-Now we need to prepare the SNP file. We need to get columns 1, 2, and 3 for SNP_ID, Chromosome and Position respectively. 
-
-```{r data extraction}
-# Extract the indices of columns matching the pattern
+# Extract the indices of columns matching the pattern, and order by SNP ID.
 extracted_columns <- snp[, c(1, 3, 4)]
-# Write the extracted data to a new file
-write.table(extracted_columns, file = "snp_columns.txt", row.names = FALSE)
-# Open file 
-snp_columns = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/snp_columns.txt", header = TRUE)
+extracted_columns <- arrange(extracted_columns, SNP_ID)
+```
 
-# Another way to do it with the grep command 
-column_snp <- grep("SNP_ID|Chromosome|Position", colnames(snp))
-# Extract the columns based on the indices
-extracted_columns <- snp[, column_snp]
-# Print the entire content of the extracted columns
-print(extracted_columns)
+* Extract specifically the Maize (ZMM) and Teosinte (ZMP) groups along with the SNP_ID (in columns) of the Fang file.
+
+```{r data extraction}
+#Filter the rows with ZMM maize groups
+zmm <- filter(fang, startsWith(Group, 'ZMM')) 
+
+#transpose file, add back column and row names. 
+t_zmm <- transpose(zmm)
+rownames(t_zmm) <- colnames(zmm)
+colnames(t_zmm) <- rownames(zmm)
+setDT(t_zmm, keep.rownames = TRUE)
+colnames(t_zmm)[colnames(t_zmm) == 'rn'] <- 'SNP_ID'
+
+#Teosinte 
+zmp <- filter(fang, startsWith(Group, 'ZMP')) 
+t_zmp <- transpose(zmp)
+rownames(t_zmp) <- colnames(zmp)
+colnames(t_zmp) <- rownames(zmp)
+setDT(t_zmp, keep.rownames = TRUE)
+colnames(t_zmp)[colnames(t_zmp) == 'rn'] <- 'SNP_ID'
 
 ```
 
 ## Merging data files
-* Now we need to merge the files snp_columns.txt with the transpose data for Maize (zmm.txt) and Teosinte (zmp.txt).
-* Files that we need are: transposed_zmm , transposed_zmp , snp_columns. We already read/opened them in previous chunks.
+
+* Now we need to merge the files snp_columns.txt with the transpose data for Maize and Teosinte.
 
 ```{r data merging}
 # Merging Maize file
-# Merge the two data frames by column (assuming they have the same number of rows)
-merged_snpzmm <- cbind(snp_columns, transposed_zmm)
-
-# Write the merged data to a new text file
-write.table(merged_snpzmm, file = "merged_snpzmm.txt", row.names = FALSE)
-open_merged_zmm = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/merged_snpzmm.txt", header = TRUE)
-
+maize_snp <- merge(extracted_columns, t_zmm, by = 'SNP_ID')
 # Merging Teosinte file
-merged_snpzmp <- cbind(snp_columns, transposed_zmp)
-write.table(merged_snpzmp, file = "merged_snpzmp.txt", row.names = FALSE)
-open_merged_zmp = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/merged_snpzmp.txt", header = TRUE)
+teosinte_snp <- merge(extracted_columns, t_zmp, by = 'SNP_ID')
 ```
 
 Right now we count with a merged file organized as we need it according to the assignment instructions: 
@@ -196,19 +155,13 @@ The assignment is requesting us to create the following files:
 
 ```{r increasing position}
 # Let's extract the non-numerical values from the 'Position' column 
-num_open_merged_zmm <- open_merged_zmm[grepl("^\\d+$", open_merged_zmm$Position), ]
-
-# Save this file
-write.table(num_open_merged_zmm, file = "ready_zmm.txt", row.names = FALSE)
+num_open_merged_zmm <- maize_snp[grepl("^\\d+$", maize_snp$Position), ]
 
 # Convert 'Position' column into numeric
 convnum_open_merged_zmm <- as.numeric(num_open_merged_zmm$Position)
 
 # Order the numeric values by the 'Position' column
 inc_zmm <- num_open_merged_zmm[order(convnum_open_merged_zmm), ]
-
-# Print the ordered dataframe
-print(inc_zmm)
 
 # Let's make sure the position column is numeric 
 num_inc_zmm <- as.numeric(inc_zmm$Position)
@@ -218,13 +171,10 @@ is_ordered <- all(diff(num_inc_zmm) >= 0)
 
 # Print the result
 print(is_ordered)
-
 ```
-
 * We now need to create 1 file for each chromosome (1:10) for the organized file. We can do that with a for loop command that will store automatically the .txt files for the corresponding chromosome. 
 
 ```{r chromosome loop}
-
 # Get unique chromosome numbers
 chromosomeszmm <- unique(inc_zmm$Chromosome)
 
@@ -237,10 +187,6 @@ for (chr in chromosomeszmm) {
   file_name <- paste0("maize_increasing_chr_", chr, ".txt")
   write.table(chr_data, file = file_name, sep = "\t", quote = FALSE, row.names = FALSE)
 }
-
-# If you want to check the files you can use
-#maize_inc_1 = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/maize_increasing_chr_1.txt", header = TRUE)
-
 ```
 
 
@@ -266,6 +212,7 @@ print(is_ordered_dec)
 
 * Now we need to change the encoded symbol ?/? for -/-.We can do it with lapply command. However, this transforms the data into a list and we need to convert back to data frame. 
 * Then we can create 1 file for each chromosome (1:10) for the organized file as we did previously.
+
 ```{r replace symbols}
 # Using lapply to replace "?" with "-" for the entire dataframe
 encoded_dec_zmm <- lapply(dec_zmm, function(x) gsub("\\?", "-", x))
@@ -283,10 +230,6 @@ for (chr in chromosomeszmm_dec) {
   file_name <- paste0("maize_decreasing_chr_", chr, ".txt")
   write.table(chr_data, file = file_name, sep = "\t", quote = FALSE, row.names = FALSE)
 }
-
-# If you want to check the files you can use
-# maize_dec_1 = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/maize_decreasing_chr_1.txt", header = TRUE)
-
 ```
 
 ### Teosinte files
@@ -298,19 +241,13 @@ for (chr in chromosomeszmm_dec) {
 
 ```{r increasing order}
 # Let's extract the non-numerical values from the 'Position' column 
-num_open_merged_zmp <- open_merged_zmp[grepl("^\\d+$", open_merged_zmp$Position), ]
-
-# Save this file
-write.table(num_open_merged_zmp, file = "ready_zmp.txt", row.names = FALSE)
+num_open_merged_zmp <- teosinte_snp[grepl("^\\d+$", teosinte_snp$Position), ]
 
 # Convert 'Position' column into numeric
 convnum_open_merged_zmp <- as.numeric(num_open_merged_zmp$Position)
 
 # Order the numeric values by the 'Position' column
 inc_zmp <- num_open_merged_zmp[order(convnum_open_merged_zmp), ]
-
-# Print the ordered dataframe
-print(inc_zmp)
 
 # Let's make sure the position column is numeric 
 num_inc_zmp <- as.numeric(inc_zmp$Position)
@@ -337,10 +274,6 @@ for (chr in chromosomeszmp) {
   file_name <- paste0("teosinte_increasing_chr_", chr, ".txt")
   write.table(chr_data, file = file_name, sep = "\t", quote = FALSE, row.names = FALSE)
 }
-
-# If you want to check the files you can use
-# teosinte_inc_1 = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/teosinte_increasing_chr_1.txt", header = TRUE)
-
 ```
 
 #### 4. 10 files (1 for each chromosome) with SNPs ordered based on decreasing position values and with missing data encoded by this symbol: -
@@ -386,79 +319,60 @@ for (chr in chromosomeszmp_dec) {
 ```
 
 # Conclusion:
-We have succesfully process our 40 files.
+We have successfully process our 40 files.
 
 # Part 3. Data visualization
 
-For this part we need to install some packages of interest
-```{r install packages}
-# Load required libraries
-install.packages("ggplot2")
-install.packages("tidyverse")
-install.packages("dplyr")
-library(ggplot2)
-library(tidyr)
-library(dplyr)
-```
-
 ## SNPs per chromosome
-### Questions: 
 
-a. What is the distribution of SNPs on and accross chromosomes?
+1. What is the distribution of SNPs on and accross chromosomes?
 
-First, open the files where we have all chromosomes per group but without the special positions (unknown, multiple and empty). Keep in mind these files are not ordered.
-```{r read files}
-ready_zmm = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/ready_zmm.txt", header = TRUE)
-ready_zmp = read.table("C:/Users/mchavesm/Box/Rass/R_assignment/ready_zmp.txt", header = TRUE)
-```
-
-Second, count the SNPs present in both Maize and Teosinte groups in each chromosome
+* Count the SNPs present in both Maize and Teosinte groups in each chromosome
 ```{r snp count}
-zmm_counts <- ready_zmm %>% count(Chromosome, sort = TRUE)
-zmp_counts <- ready_zmp %>% count(Chromosome, sort = TRUE)
+zmm_counts <- num_open_merged_zmm %>% count(Chromosome, sort = TRUE)
+zmp_counts <- num_open_merged_zmp %>% count(Chromosome, sort = TRUE)
 
 ```
 
 Now, create the distribution plot. 
 
 ```{r snp count}
-
 # Maize
 ggplot() + geom_col(data = zmm_counts, mapping = aes(x=Chromosome, y=n)) + labs(x = "Chromosome", y = "Number of SNPs", fill = "Chromosome")
 
 # Teosinte
 ggplot() + geom_col(data = zmp_counts, mapping = aes(x=Chromosome, y=n)) + labs(x = "Chromosome", y = "Number of SNPs", fill = "Chromosome")
 ```
-b. Are there more SNP positions in maize or teosinte individuals?
+
+2. Are there more SNP positions in maize or teosinte individuals?
 
 Visually, both Maize and Teosinte groups contain the same amount of SNPs in their chromosomes.
 
 ## Missing data and amount of heterozygosity
-### Questions:
 
-What is the proportion of homozygous and heterozygous sites as well as missing data in each sample and each group?
+1. What is the proportion of homozygous and heterozygous sites as well as missing data in each sample and each group?
 
 To answer this question, first we need to search and count both homozygous and heterozygous sites in our files. We will create a new data frame for those sites, as well as for the missing data.
 
 ```{r snp count}
 
 #Maize homozygous
-homozygous_zmm <- data.frame(rowSums(ready_zmm == "A/A" | ready_zmm =="T/T" | ready_zmm == "C/C" | ready_zmm == "G/G", na.rm = FALSE))
+homozygous_zmm <- data.frame(rowSums(num_open_merged_zmm== "A/A" | num_open_merged_zmm=="T/T" | num_open_merged_zmm== "C/C" | num_open_merged_zmm== "G/G", na.rm = FALSE))
 
 #Maize heterozygous
-heterozygous_zmm <- data.frame(data.frame(rowSums(ready_zmm == "A/T" | ready_zmm =="A/C" | ready_zmm == "A/G" | ready_zmm == "T/A" | ready_zmm == "T/C" | ready_zmm == "T/G" | ready_zmm == "C/A" | ready_zmm == "C/T" | ready_zmm == "C/G" | ready_zmm == "G/A" | ready_zmm == "G/T" | ready_zmm == "G/C", na.rm = FALSE)))
+heterozygous_zmm <- data.frame(data.frame(rowSums(num_open_merged_zmm== "A/T" | num_open_merged_zmm=="A/C" | num_open_merged_zmm== "A/G" | num_open_merged_zmm== "T/A" | num_open_merged_zmm== "T/C" | num_open_merged_zmm== "T/G" | num_open_merged_zmm== "C/A" | num_open_merged_zmm== "C/T" | num_open_merged_zmm== "C/G" | num_open_merged_zmm== "G/A" | num_open_merged_zmm== "G/T" | num_open_merged_zmm== "G/C", na.rm = FALSE)))
 
 #Maize missing data
-missing_zmm <- data.frame(rowSums(ready_zmm == "?/?", na.rm = FALSE))
+missing_zmm <- data.frame(rowSums(num_open_merged_zmm== "?/?", na.rm = FALSE))
 
 #Teosinte homozygous
-homozygous_zmp <- data.frame(rowSums(ready_zmp == "A/A" | ready_zmp =="T/T" | ready_zmp == "C/C" | ready_zmp == "G/G", na.rm = FALSE))
+homozygous_zmp <- data.frame(rowSums(num_open_merged_zmp == "A/A" | num_open_merged_zmp =="T/T" | num_open_merged_zmp == "C/C" | num_open_merged_zmp == "G/G", na.rm = FALSE))
 
 #Teosinte heterozygous
-heterozygous_zmp <- data.frame(data.frame(rowSums(ready_zmp == "A/T" | ready_zmp =="A/C" | ready_zmp == "A/G" | ready_zmp == "T/A" | ready_zmp == "T/C" | ready_zmp == "T/G" | ready_zmp == "C/A" | ready_zmp == "C/T" | ready_zmp == "C/G" | ready_zmp == "G/A" | ready_zmp == "G/T" | ready_zmp == "G/C", na.rm = FALSE)))
+heterozygous_zmp <- data.frame(data.frame(rowSums(num_open_merged_zmp == "A/T" | num_open_merged_zmp =="A/C" | num_open_merged_zmp == "A/G" | num_open_merged_zmp == "T/A" | num_open_merged_zmp == "T/C" | num_open_merged_zmp == "T/G" | num_open_merged_zmp == "C/A" | num_open_merged_zmp == "C/T" | num_open_merged_zmp == "C/G" | num_open_merged_zmp == "G/A" | num_open_merged_zmp == "G/T" | num_open_merged_zmp == "G/C", na.rm = FALSE)))
 
 #Teosintemissing data
-missing_zmp <- data.frame(rowSums(ready_zmp == "?/?", na.rm = FALSE))
+missing_zmp <- data.frame(rowSums(num_open_merged_zmp == "?/?", na.rm = FALSE))
 
 ```
 
@@ -475,7 +389,7 @@ p_homo_hetero[sapply(p_homo_hetero, is.infinite)] <- NA
 SNP_number <- c(1:939)
 
 #Combine all data into one dataframe and then rename the columns as needed.
-zmm_proportion <- data.frame(SNP_number, ready_zmm[1:3], homozygous_zmm, heterozygous_zmm, missing_zmm, p_homo_hetero)
+zmm_proportion <- data.frame(SNP_number, num_open_merged_zmm[1:3], homozygous_zmm, heterozygous_zmm, missing_zmm, p_homo_hetero)
 
 colnames(zmm_proportion)[1] <- 'SNP_number'
 colnames(zmm_proportion)[4] <- 'homozygous'
@@ -494,7 +408,7 @@ p_homo_hetero_zmp[sapply(p_homo_hetero_zmp, is.infinite)] <- NA
 SNP_number_zmp <- c(1:939)
 
 #Combine all data into one dataframe and then rename the columns as needed.
-zmp_proportion <- data.frame(SNP_number_zmp, ready_zmp[1:3], homozygous_zmp, heterozygous_zmp, missing_zmp, p_homo_hetero_zmp)
+zmp_proportion <- data.frame(SNP_number_zmp, num_open_merged_zmp[1:3], homozygous_zmp, heterozygous_zmp, missing_zmp, p_homo_hetero_zmp)
 
 colnames(zmp_proportion)[1] <- 'SNP_number'
 colnames(zmp_proportion)[4] <- 'homozygous'
@@ -503,6 +417,7 @@ colnames(zmp_proportion)[6] <- 'missing'
 colnames(zmp_proportion)[7] <- 'homozygous/heterozygous'
 
 ```
+
 
 Now, graphic the homozygous, heterozygous, missing and proportion of sites
 ```{r snp count}
@@ -571,6 +486,7 @@ ggplot(snp_plot_data, aes(x = Frequency, y = SNP_number)) +
 
 ```{r visualization}
 # Teosinte
+
 # Check for duplicated SNP numbers
 duplicated_SNPs_zmp <- zmp_proportion$SNP_number_zmp[duplicated(zmp_proportion$SNP_number_zmp)]
 
